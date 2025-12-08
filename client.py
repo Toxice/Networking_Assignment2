@@ -54,16 +54,16 @@ def interactive_mode(host: str, port: int):
                 print(" 3. quit - Close connection and exit")
                 print("=" * 50)
 
-                choice = input("Enter choice (1/2/3): ").strip()
+                choice = input("Enter choice (calc/gpt/quit): ").strip()
 
-                if choice == "3" or choice.lower() in ["quit", "exit"]:
+                if choice == "quit" or choice.lower() in "exit":
                     print("Closing connection...")
                     break
 
                 # Build payload based on user choice
                 payload = None
 
-                if choice == "1":
+                if choice == "calc":
                     choose = input("Type 1 for a premade expression or 2 for your own: ").strip()
                     if choose == "2":
                         expr = input("Enter an expression of your choise: ")
@@ -78,12 +78,12 @@ def interactive_mode(host: str, port: int):
                     elif choose == "1":
                         print("choose from a library of premade expressions:")
                         print(PRE_MADE_EXPR)
-                        expr1 = str(input("enter your choise: "))
+                        pre_made_expr = str(input("enter your choise: "))
 
-                        if expr1 in PRE_MADE_EXPR:
+                        if pre_made_expr in PRE_MADE_EXPR:
                             payload = {
                                 "mode": "calc",
-                                "data": {"expr": str(PRE_MADE_EXPR[expr1])},
+                                "data": {"expr": str(PRE_MADE_EXPR[pre_made_expr])},
                                 "options": {"cache": True}
                             }
                     else:
