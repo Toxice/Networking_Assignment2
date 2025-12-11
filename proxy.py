@@ -131,7 +131,7 @@ def handle_client(client_sock: socket.socket, server_host: str, server_port: int
                 if s is None:
                     # server unavailable
                     print(f"[proxy] backend unavailable ({err}). Checking cache fallback for client {client_addr}")
-                    # try to fallback to cache (already checked above) - no cache -> return error
+                    # try to fall back to cache (already checked above) - no cache -> return error
                     error_resp = {"ok": False, "error": f"Proxy: backend unavailable: {err}"}
                     try:
                         send_line(client_sock, error_resp)

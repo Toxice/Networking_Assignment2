@@ -2,6 +2,7 @@
 import argparse, socket, json, sys
 
 
+# sending the request bytes over the defined IP address and Port (Socket) and partition it as defined
 def send_request(sock: socket.socket, payload: dict) -> dict:
     """
     Send a single JSON-line request over an existing socket
@@ -28,7 +29,15 @@ def send_request(sock: socket.socket, payload: dict) -> dict:
             return json.loads(line.decode("utf-8"))
 
 
-PRE_MADE_EXPR = {"1": "2+2", "2": "5+7"}
+PRE_MADE_EXPR = {"1": "2+2", "2": "5+7", "3": "sin(10)", "4": "12*3"}
+
+'''
+Persistent TCP Mode, enables sending multiple TCP request over the same Socket without having to close and reopen the connection
+works by letting the user choose between 3 options:
+calc - for calculations
+gpt - for sending a prompt to ChatGPT over the OpenAI API
+quit - closing the connection
+'''
 
 
 def persistent_mode(host: str, port: int):
@@ -39,7 +48,7 @@ def persistent_mode(host: str, port: int):
     print(f"Connecting to {host}:{port}...")
 
     try:
-        # CHANGE 2: Create a persistent socket connection (no 'with' statement yet)
+        # Create a persistent socket connection
         sock = socket.create_connection((host, port), timeout=10)
         print("Connected! You can now send multiple requests.")
         print("Type 'quit' or 'exit' to close the connection.\n")
@@ -64,30 +73,7 @@ def persistent_mode(host: str, port: int):
                 payload = None
 
                 if choice == "calc":
-                    choose = input("Type expr for your own kind of expression or pre made for a premade expression: ").strip()
-                    if choose == "expr":
-                        expr = input("Enter an expression of your choise: ")
-                        if not expr:
-                            print("Empty expression, skipping...")
-                            continue
-                        payload = {
-                            "mode": "calc",
-                            "data": {"expr": expr},
-                            "options": {"cache": True}
-                        }
-                    elif choose == "pre made":
-                        print("choose from a library of premade expressions:")
-                        print(PRE_MADE_EXPR)
-                        pre_made_expr = str(input("enter your choise: "))
-
-                        if pre_made_expr in PRE_MADE_EXPR:
-                            payload = {
-                                "mode": "calc",
-                                "data": {"expr": str(PRE_MADE_EXPR[pre_made_expr])},
-                                "options": {"cache": True}
-                            }
-                    else:
-                        raise ValueError("illegal constant type")
+                    payload = calc_mode()
 
                 elif choice == "gpt":
                     prompt = input("Enter GPT prompt: ").strip()
@@ -104,7 +90,7 @@ def persistent_mode(host: str, port: int):
                     print("Invalid choice, please try again.")
                     continue
 
-                # CHANGE 3: Send request on the SAME socket (persistent connection)
+                # Send request on the SAME socket (persistent connection)
                 print(f"\nSending request: {payload['mode']}")
                 resp = send_request(sock, payload)
 
@@ -129,11 +115,46 @@ def persistent_mode(host: str, port: int):
         sys.exit(1)
 
 
-def single_request_mode(host: str, port: int, mode: str, expr: str = None, prompt: str = None, no_cache: bool = False):
-    """
-    CHANGE 5: Legacy mode for single request (backward compatibility).
+# calculation mode - sends data for calculation and retrieves the answer
+def calc_mode():
+    choose: str = input("Type expr for your own kind of expression or pre made for a premade expression: ").strip()
+
+    if choose == "expr":
+        expr = input("Enter an expression of your choice: ")
+        if not expr:
+            print("Empty expression, skipping...")
+
+        payload = {
+            "mode": "calc",
+            "data": {"expr": expr},
+            "options": {"cache": True}
+        }
+        return payload
+
+    elif choose == "pre made":
+        print("choose from a library of premade expressions:")
+        print(PRE_MADE_EXPR)
+
+        pre_made_expr = input("enter your choice: ")
+
+        if pre_made_expr in PRE_MADE_EXPR:
+            payload = {
+                "mode": "calc",
+                "data": {"expr": str(PRE_MADE_EXPR[pre_made_expr])},
+                "options": {"cache": True}
+            }
+            return payload
+    else:
+        raise ValueError("illegal constant type")
+
+
+"""
+    Legacy mode for single request (backward compatibility).
     This opens a connection, sends ONE request, and closes.
-    """
+"""
+
+
+def single_request_mode(host: str, port: int, mode: str, expr: str = None, prompt: str = None, no_cache: bool = False):
     # Build the payload
     if mode == "calc":
         if not expr:
@@ -144,7 +165,7 @@ def single_request_mode(host: str, port: int, mode: str, expr: str = None, promp
             "data": {"expr": expr},
             "options": {"cache": not no_cache}
         }
-    else: # gpt
+    else:  # gpt
         if not prompt:
             print("Missing --prompt", file=sys.stderr)
             sys.exit(2)
@@ -171,7 +192,7 @@ def main():
     ap.add_argument("--host", default="127.0.0.1", help="Server host")
     ap.add_argument("--port", type=int, default=5555, help="Server port")
 
-    # CHANGE 6: Add --interactive flag for persistent connection mode
+    # a command flag for setting a persistent mode
     ap.add_argument(
         "--p", "--persistent",
         action="store_true",
@@ -186,7 +207,7 @@ def main():
 
     args = ap.parse_args()
 
-    # CHANGE 7: Choose between interactive and single-request mode
+    # Choose between persistent and single-request mode
     if args.p:
         # New persistent connection mode
         persistent_mode(args.host, args.port)

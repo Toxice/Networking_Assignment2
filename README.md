@@ -1,58 +1,117 @@
-\# EX2 — Application Layer Lab (Python 3.13+)
+# JSON-over-TCP Calc/GPT Protocol
 
+This asssignment implements a simple **application-layer protocol over TCP** using
+newline-delimited JSON messages.
 
+The protocol supports two operations as defined at the assignment:
 
-This exercise teaches the basics of TCP sockets in Python and a simple app-layer protocol over TCP using \*\*line-delimited JSON\*\*.
+- `calc` – safely evaluate math expressions on the server.
+- `gpt`  – send a prompt to a GPT model via the OpenAI API.
 
+this code also includes:
 
+- **Persistnet TCP Server that can handle multiple requests on a single connection.**  
+- **a Client with a Commnad Line Interface that supports single-request mode and persistent mode.** 
+- **a TCP proxy server with an LRU response cache.** 
 
-\## Components
+---
 
-\- `server.py`: TCP server that accepts one-line JSON requests and returns one-line JSON responses.
+##  Assignment Architecture
 
-&nbsp; - `mode="calc"`: evaluate a math expression safely (no `eval`).
+### Components
 
-&nbsp; - `mode="gpt"`: send a prompt to GPT (stub by default; can be replaced with a real API call).
+- **Server (`server.py`)**
+  - Listens on a TCP port (default `127.0.0.1:5555`).
+  - Accepts multiple concurrent clients.
+  - On each connection, accepts **many** JSON requests separated by `\n`.
+  - Supports:
+    - `mode="calc"` – safe math evaluation (Abstract Syntex Tree based, no `eval`).
+    - `mode="gpt"` – calls a GPT model via OpenAI (requires API key). (uses the python-dotenv library)
 
-&nbsp; - Built-in LRU cache for responses.
+- **Client (`client.py`)**
+  - Commnad Line Interface Wrapper that "speaks" the protocol to the user.
+  - **Single-request mode**: open TCP, send one request, close.
+  - **Persistent mode**: keep the same TCP connection and send multiple requests in a loop.  
 
-\- `client.py`: simple client for sending requests to the server.
+- **Proxy (`proxy.py`)**
+  - Listens on its own TCP port (default `127.0.0.1:5554`).
+  - Forwards JSON-line messages to the backend server.
+  - Maintains an **LRU cache** of responses keyed by the full JSON request. 
 
-\- `proxy.py` (optional challenge): transparent TCP proxy you can extend (e.g., logging or local cache).
+- **OpenAI Integration**
+  - Controlled by environment variables in `.env`:
+    - `OPENAI_API_KEY`
+    - `GPT_MODEL`
+  - Real GPT calls require the dependencies in `requirements.txt`. 
 
-\- `tests/test\_smoke.py`: tiny smoke test.
+---
 
-\- `requirements.txt`: dependencies (only needed if you choose to enable real GPT calls).
+## Transport-Level Protocol
 
+The transport is plain **TCP**:
 
+- Each message is a **single line of UTF-8 JSON**.
+- Messages are delimited by a single newline character `\n`.
+- Both client and server:
+  - Accumulate bytes from `recv(...)` into a buffer.
+  - Extract complete lines using the first `\n`.
+  - Decode that line as UTF-8 JSON.
+- Multiple requests can be sent over and over on the same connection (persistent mode).
 
-\## Quick Start
+---
 
-```bash
+## Message Format
 
-pip install -r requirements.txt   # optional unless you enable GPT real calls
+### Requests
 
-python server.py --host 127.0.0.1 --port 5555
+Every request is a JSON object with the following structure:
 
+```jsonc
+{
+  "mode": "calc" | "gpt",
+  "data": { ... },
+  "options": {
+    "cache": true | false   // optional, defaults to true
+  }
+}
+```
 
+`mode calc:`
+```jsonc
+{
+  "mode": "calc",
+  "data": {
+    "expr": "sin(10) + 2*3"
+  },
+  "options": {
+    "cache": true
+  }
+}
+```
+- expr (string) – a math expression using a restricted set of:
 
-\# Calculate:
+- Functions: sin, cos, tan, sqrt, log, exp, max, min, abs
 
-python client.py --host 127.0.0.1 --port 5555 --mode calc --expr "sin(max(2,3\*4,5)/7)\*3"
+- Constants: pi, e
 
+- Operators: + - * / // % ** and unary + / - 
 
+- notice that in order to use the AST based evaluations you'll require the dependencies in `requirements.txt`.
 
-\# GPT (stub by default):
+`mode gpt:`
 
-python client.py --host 127.0.0.1 --port 5555 --mode gpt --prompt "Summarize Newton in 3 bullet points"
+```jsonc
+{
+  "mode": "gpt",
+  "data": {
+    "prompt": "Explain TCP three-way handshake in simple terms."
+  },
+  "options": {
+    "cache": true
+  }
+}
+```
 
+- prompt (string) – user text that will be sent to GPT.
 
-
-\## Quick Start with Proxy
-
-python proxy.py --listen-port 5554 --server-port 5555
-
-python client.py --host 127.0.0.1 --port 5554 --mode calc --expr "sqrt(16)"
-
-
-
+- Note: the actual GPT call is implemented in `call_gpt()` in server.py and uses the OpenAI Python client.

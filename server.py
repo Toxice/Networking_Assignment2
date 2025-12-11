@@ -77,11 +77,12 @@ def safe_eval_expr(expr: str) -> float:
 
 
 # ---------------- GPT Call (stub by default) ----------------
-def call_gpt_phony(prompt: str) -> str:
-    """
+   """
     Stub for GPT call – returns a placeholder string.
     Replace this with a real OpenAI call if desired.
     """
+def call_gpt_phony(prompt: str) -> str:
+
     return f"[GPT-STUB] Received a prompt of length {len(prompt)} chars."
 
 def call_gpt(prompt: str) -> str:
@@ -157,18 +158,18 @@ def handle_client(conn: socket.socket, addr, cache: LRUCache):
     with conn:
         raw = b"" # Buffer to accumulate incoming data
         try:
-            while True: # CHANGE 1: Removed the break - keep processing requests
+            while True: # Removed the break - keep processing requests
                 # Read data from client
                 chunk = conn.recv(4096)
 
-                # CHANGE 2: Check if client closed connection
+                # Check if client closed connection
                 if not chunk:
                     print(f"[server] Client {addr} disconnected")
                     break # Exit loop when client closes connection
 
                 raw += chunk
 
-                # CHANGE 3: Process ALL complete messages in buffer (loop instead of if)
+                # Process ALL complete messages in buffer (loop instead of if)
                 # This handles cases where multiple requests arrive in one chunk
                 while b"\n" in raw:
                     line, _, raw = raw.partition(b"\n")
