@@ -1,19 +1,52 @@
 # test_smoke.py
 import time, threading
 
-def start_server():
-    import server
-    server.serve("127.0.0.1", 5599, 16)
+import server
 
-def test_calc_and_cache():
-    t = threading.Thread(target=start_server, daemon=True); t.start()
-    time.sleep(0.3)
-    import client
-    r1 = client.request("127.0.0.1", 5599, {"mode":"calc","data":{"expr":"sin(0)"},"options":{"cache":True}})
-    assert r1["ok"] and abs(r1["result"] - 0.0) < 1e-9
-    r2 = client.request("127.0.0.1", 5599, {"mode":"calc","data":{"expr":"sin(0)"},"options":{"cache":True}})
-    assert r2["meta"]["from_cache"] is True
+
+def test_calc_simple_expression():
+    cache = server.LRUCache(capacity=10)
+
+    request = {
+        "mode": "calc",
+        "data": {"expr": "2+2"},
+        "options": {"cache": True}
+    }
+
+    response = server.handle_request(request, cache)
+
+    assert response["ok"] is True
+    assert response["result"] == 4.0
+    assert "meta" in response
+    assert response["meta"]["from_cache"] is False
+
+
+def test_calc_cache_hit():
+    cache = server.LRUCache(capacity=10)
+
+    request = {
+        "mode": "calc",
+        "data": {"expr": "5*3"},
+        "options": {"cache": True}
+    }
+
+    # First request → cache MISS
+    first_response = server.handle_request(request, cache)
+
+    assert first_response["ok"] is True
+    assert first_response["result"] == 15.0
+    assert first_response["meta"]["from_cache"] is False
+
+    # Second request → cache HIT
+    second_response = server.handle_request(request, cache)
+
+    assert second_response["ok"] is True
+    assert second_response["result"] == 15.0
+    assert second_response["meta"]["from_cache"] is True
+
 
 if __name__ == "__main__":
-    test_calc_and_cache()
-    print("OK")
+    test_calc_simple_expression()
+    print("test_calc_simple_expression OK")
+    test_calc_cache_hit()
+    print("test_calc_cache_hit OK")
