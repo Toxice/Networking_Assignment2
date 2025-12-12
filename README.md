@@ -59,11 +59,23 @@ The transport is plain **TCP**:
 - Multiple requests can be sent over and over on the same connection (persistent mode).
 
 ---
+## Client Setup
+---
+
+The client can be either set in persistent mode or single reuqest mode
+
+to activate the persistent mode you should enter this prompt: `python client.py --p`
+if you want it to set on a different socket then use the args `--host` for a different IP address and `--port` for a different Port
+
+example: `python client.py --host 127.0.0.1 --port 5555 --p` : sets the client with IP `127.0.0.1`, port `5555` and in persistent mode
+for single-request mode, just drop the `--p`
+
+---
 
 ## Message Format
-
+---
 ### Requests
-
+---
 Every request is a JSON object with the following structure:
 
 ```jsonc
@@ -81,7 +93,7 @@ Every request is a JSON object with the following structure:
 {
   "mode": "calc",
   "data": {
-    "expr": "sin(10) + 2*3"
+    "expr": "1 + 2*3"
   },
   "options": {
     "cache": true
@@ -104,7 +116,7 @@ Every request is a JSON object with the following structure:
 {
   "mode": "gpt",
   "data": {
-    "prompt": "Explain TCP three-way handshake in simple terms."
+    "prompt": "hello"
   },
   "options": {
     "cache": true
@@ -115,3 +127,31 @@ Every request is a JSON object with the following structure:
 - prompt (string) – user text that will be sent to GPT.
 
 - Note: the actual GPT call is implemented in `call_gpt()` in server.py and uses the OpenAI Python client.
+---
+### Responses
+---
+`mode calc`
+
+```jsonc
+{
+"ok": true,
+"result": 7,
+"meta": {
+  "from_cache": true | false  // default as false - if data is found in cache then its made true
+  "took_ms": time
+  }
+}
+```
+
+`mode gpt`
+
+```jsonc
+{
+"ok": true,
+"result": "Hello! How can I help you today?",
+"meta": {
+  "from_cache": true | false,  // default as false - if data is found in cache then its made true
+  "took_ms": number of miliseconds
+  }
+}
+```
