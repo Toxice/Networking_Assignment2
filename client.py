@@ -101,7 +101,6 @@ def persistent_mode(host: str, port: int):
                     print(f"Error: {resp.get('error')}")
 
         finally:
-            # CHANGE 4: Properly close the socket when done
             sock.close()
             print("\nConnection closed.")
 
