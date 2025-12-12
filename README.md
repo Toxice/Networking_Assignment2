@@ -68,7 +68,7 @@ to activate the persistent mode you should enter this prompt: `python client.py 
 if you want it to set on a different socket then use the args `--host` for a different IP address and `--port` for a different Port
 
 example: `python client.py --host 127.0.0.1 --port 5555 --p` : sets the client with IP `127.0.0.1`, port `5555` and in persistent mode
-for single-request mode, just drop the `--p`
+if you want to use the single-request mode, you would have to enter all the args maunally: `python client.py --host IP_ADDRESS --port PORT_NUMBER --mode calc | gpt --expr | --prompt CALCULATION | GPT_PROMPT`
 
 ---
 
